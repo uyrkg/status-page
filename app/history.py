@@ -8,9 +8,9 @@ logger = logging.getLogger(__name__)
 
 def prune_old_history():
     """Delete check_history rows older than HISTORY_RETENTION_DAYS."""
-    from app.database import get_db
+    from app.database import get_db_connection
 
-    conn = get_db().__enter__()
+    conn = get_db_connection()
     try:
         cutoff = datetime.utcnow() - timedelta(days=config.history_retention_days)
         cursor = conn.execute(

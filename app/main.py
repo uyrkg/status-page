@@ -10,6 +10,7 @@ import os
 from app.database import init_db
 from app.config import config
 from app.routers import endpoints, incidents, maintenance, status, config as config_router
+from app.monitor import start_scheduler
 
 logging.basicConfig(
     level=logging.INFO,
@@ -23,6 +24,7 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Initializing database")
     init_db()
+    start_scheduler(app)
     yield
     # Shutdown handled by scheduler
 
@@ -76,11 +78,3 @@ async def serve_admin():
     if os.path.exists(admin_path):
         return FileResponse(admin_path)
     return {"message": "Admin page not found"}
-
-
-# --- Scheduler startup/shutdown ---
-from app.monitor import start_scheduler
-
-@app.on_event("startup")
-async def startup_scheduler():
-    start_scheduler(app)

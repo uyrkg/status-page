@@ -285,8 +285,7 @@ def start_scheduler(app):
     scheduler = AsyncIOScheduler()
 
     def _sync_run_checks():
-        loop = asyncio.get_event_loop()
-        loop.create_task(run_checks())
+        asyncio.run(run_checks())
 
     scheduler.add_job(
         _sync_run_checks,
