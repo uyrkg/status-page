@@ -37,7 +37,7 @@ def _get_current_status(endpoint_id: int) -> str:
             """SELECT id FROM maintenance_windows
                WHERE (endpoint_id = ? OR endpoint_id IS NULL)
                AND is_active = 1
-               AND scheduled_start <= ? AND scheduled_end > ?""",
+               AND scheduled_start <= ? AND scheduled_end > ?""", 
             (endpoint_id, now.isoformat(), now.isoformat())
         ).fetchone()
         if row:
@@ -89,7 +89,11 @@ def create_endpoint(data: EndpointCreate):
         )
         conn.commit()
         row = conn.execute("SELECT * FROM endpoints WHERE id = ?", (cursor.lastrowid,)).fetchone()
-        return _row_to_endpoint_response(row)
+        resp = _row_to_endpoint_response(row)
+        # Schedule the new endpoint
+        from app.monitor import reschedule_endpoint
+        reschedule_endpoint(row["id"])
+        return resp
     finally:
         conn.close()
 
@@ -129,7 +133,11 @@ def update_endpoint(endpoint_id: int, data: EndpointUpdate):
             conn.commit()
 
         row = conn.execute("SELECT * FROM endpoints WHERE id = ?", (endpoint_id,)).fetchone()
-        return _row_to_endpoint_response(row)
+        resp = _row_to_endpoint_response(row)
+        # Reschedule with new interval/enabled state
+        from app.monitor import reschedule_endpoint
+        reschedule_endpoint(endpoint_id)
+        return resp
     finally:
         conn.close()
 
@@ -145,6 +153,9 @@ def delete_endpoint(endpoint_id: int):
         conn.commit()
     finally:
         conn.close()
+    # Remove scheduler job
+    from app.monitor import remove_endpoint_job
+    remove_endpoint_job(endpoint_id)
 
 
 @router.get("/{endpoint_id}/history")
