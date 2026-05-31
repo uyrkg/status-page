@@ -1,5 +1,7 @@
 # Self-Hosted Status Page
 
+> ⚠️ **Disclaimer:** This project was "vibe coded" — built with AI assistance. Use at your own risk. Not production-hardened.
+
 A lightweight internal status page for home lab environments. Monitors endpoints, tracks incidents, and sends email alerts on failures.
 
 ## Features
