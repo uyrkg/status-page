@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  status-page:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=data/status.db
+      - CHECK_INTERVAL=60
+      - HISTORY_RETENTION_DAYS=30
+      - SMTP_HOST=${SMTP_HOST:-smtp.example.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-statuspage@example.com}
+      - SMTP_TLS=true
+      - APP_URL=${APP_URL:-http://localhost:8000}
+      - ALERT_COOLDOWN_MINUTES=5

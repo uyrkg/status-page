@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maintenance Schedule — StatusPage</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-brand">
+      <svg class="logo" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="36" height="36" rx="8" fill="#5865F2"/>
+        <circle cx="18" cy="18" r="8" fill="#e4e6ed"/>
+        <circle cx="18" cy="18" r="5" fill="#5865F2"/>
+        <circle cx="18" cy="18" r="2" fill="#e4e6ed"/>
+      </svg>
+      <h1>Maintenance Schedule</h1>
+    </div>
+    <div class="header-status">
+      <a href="/" style="color: var(--text-secondary); font-size: 0.85rem;">← Back to Status</a>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container">
+
+    <!-- Active / Upcoming Maintenance -->
+    <section class="section">
+      <h2 class="section-title">Active &amp; Upcoming</h2>
+      <div id="activeMaint">
+        <div class="empty-state">
+          <p>Loading...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Past Maintenance -->
+    <section class="section">
+      <h2 class="section-title">Past Maintenance</h2>
+      <div id="pastMaint">
+        <div class="empty-state">
+          <p>Loading...</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>StatusPage &middot; <a href="/">View Status</a></p>
+  </footer>
+
+  <script>
+    const API_BASE = '';
+
+    function formatDateTime(isoString) {
+      const d = new Date(isoString);
+      return d.toLocaleString();
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function getWindowStatus(window) {
+      const now = new Date();
+      const start = new Date(window.scheduled_start);
+      const end = new Date(window.scheduled_end);
+
+      if (now >= start && now <= end && window.is_active) {
+        return { label: 'Active', cls: 'active' };
+      } else if (start > now) {
+        return { label: 'Upcoming', cls: 'upcoming' };
+      } else {
+        return { label: 'Completed', cls: 'completed' };
+      }
+    }
+
+    async function fetchMaintenance() {
+      try {
+        const res = await fetch(`${API_BASE}/api/maintenance`);
+        if (!res.ok) throw new Error('Failed to fetch maintenance');
+        return await res.json();
+      } catch (e) {
+        console.error('Maintenance fetch error:', e);
+        return [];
+      }
+    }
+
+    function renderMaintenanceTable(windows, containerId, emptyMsg) {
+      const container = document.getElementById(containerId);
+
+      if (!windows || windows.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <p>${emptyMsg}</p>
+          </div>
+        `;
+        return;
+      }
+
+      const rows = windows.map(w => {
+        const status = getWindowStatus(w);
+        const endpoint = w.endpoint_name || (w.endpoint_id == null ? 'All Services' : `Endpoint #${w.endpoint_id}`);
+
+        return `
+          <tr>
+            <td>${escapeHtml(endpoint)}</td>
+            <td>${escapeHtml(w.title)}</td>
+            <td>${formatDateTime(w.scheduled_start)}</td>
+            <td>${formatDateTime(w.scheduled_end)}</td>
+            <td class="maint-status ${status.cls}">${status.label}</td>
+          </tr>
+        `;
+      }).join('');
+
+      container.innerHTML = `
+        <table class="maint-table">
+          <thead>
+            <tr>
+              <th>Service</th>
+              <th>Title</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      `;
+    }
+
+    async function refresh() {
+      const windows = await fetchMaintenance();
+      const now = new Date();
+
+      const activeUpcoming = windows.filter(w => {
+        const start = new Date(w.scheduled_start);
+        return start > now || (w.is_active && start <= now);
+      });
+
+      const past = windows.filter(w => {
+        const start = new Date(w.scheduled_start);
+        return start <= now && !w.is_active;
+      });
+
+      renderMaintenanceTable(activeUpcoming, 'activeMaint', 'No upcoming maintenance scheduled.');
+      renderMaintenanceTable(past, 'pastMaint', 'No past maintenance records.');
+    }
+
+    refresh();
+    setInterval(refresh, 30000);
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StatusPage Admin</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #c9d1d9; min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        h1 { color: #58a6ff; margin-bottom: 20px; font-size: 24px; }
+        h2 { color: #8b949e; margin: 20px 0 10px; font-size: 18px; }
+
+        .tabs { display: flex; border-bottom: 1px solid #30363d; margin-bottom: 20px; }
+        .tab { padding: 12px 24px; cursor: pointer; border: none; background: transparent; color: #8b949e; font-size: 14px; transition: all 0.2s; }
+        .tab:hover { color: #c9d1d9; }
+        .tab.active { color: #58a6ff; border-bottom: 2px solid #58a6ff; }
+
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #30363d; }
+        th { color: #8b949e; font-weight: 600; font-size: 12px; text-transform: uppercase; }
+        tr:hover { background: #161b22; }
+
+        .status-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+        .status-operational { background: #238636; color: #fff; }
+        .status-degraded { background: #d29922; color: #000; }
+        .status-outage { background: #da3633; color: #fff; }
+        .status-maintenance { background: #8957e5; color: #fff; }
+
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+        .btn-primary { background: #238636; color: #fff; }
+        .btn-primary:hover { background: #2ea043; }
+        .btn-danger { background: #da3633; color: #fff; }
+        .btn-danger:hover { background: #f85149; }
+        .btn-secondary { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
+        .btn-secondary:hover { background: #30363d; }
+
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #8b949e; font-size: 14px; }
+        input, select, textarea { width: 100%; padding: 10px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; color: #c9d1d9; font-size: 14px; }
+        input:focus, textarea:focus { outline: none; border-color: #58a6ff; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; }
+        .modal.active { display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 24px; width: 500px; max-width: 90%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h3 { color: #c9d1d9; }
+        .modal-close { background: none; border: none; color: #8b949e; font-size: 24px; cursor: pointer; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+        .inline-form { display: inline; }
+        .actions { display: flex; gap: 5px; }
+
+        .no-data { text-align: center; color: #8b949e; padding: 40px; }
+
+        .success { background: #238636; color: #fff; padding: 10px; border-radius: 6px; margin-bottom: 15px; display: none; }
+        .error { background: #da3633; color: #fff; padding: 10px; border-radius: 6px; margin-bottom: 15px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>StatusPage Admin</h1>
+
+        <div id="message"></div>
+
+        <div class="tabs">
+            <button class="tab active" data-tab="endpoints">Endpoints</button>
+            <button class="tab" data-tab="incidents">Incidents</button>
+            <button class="tab" data-tab="maintenance">Maintenance</button>
+            <button class="tab" data-tab="config">Config</button>
+        </div>
+
+        <!-- Endpoints Panel -->
+        <div class="panel active" id="endpoints-panel">
+            <div style="margin-bottom: 15px;">
+                <button class="btn btn-primary" onclick="openEndpointModal()">+ Add Endpoint</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Target</th>
+                        <th>Interval</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="endpoints-tbody"></tbody>
+            </table>
+        </div>
+
+        <!-- Incidents Panel -->
+        <div class="panel" id="incidents-panel">
+            <div style="margin-bottom: 15px;">
+                <button class="btn btn-primary" onclick="openIncidentModal()">+ Create Incident</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Endpoint</th>
+                        <th>Severity</th>
+                        <th>Status</th>
+                        <th>Started</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="incidents-tbody"></tbody>
+            </table>
+        </div>
+
+        <!-- Maintenance Panel -->
+        <div class="panel" id="maintenance-panel">
+            <div style="margin-bottom: 15px;">
+                <button class="btn btn-primary" onclick="openMaintenanceModal()">+ Add Maintenance</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Endpoint</th>
+                        <th>Start</th>
+                        <th>End</th>
+                        <th>Active</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="maintenance-tbody"></tbody>
+            </table>
+        </div>
+
+        <!-- Config Panel -->
+        <div class="panel" id="config-panel">
+            <h2>SMTP Configuration</h2>
+            <form id="smtp-form" onsubmit="saveSMTPConfig(event)">
+                <div class="form-group">
+                    <label>SMTP Host</label>
+                    <input type="text" id="smtp_host" required>
+                </div>
+                <div class="form-group">
+                    <label>SMTP Port</label>
+                    <input type="number" id="smtp_port" value="587" required>
+                </div>
+                <div class="form-group">
+                    <label>SMTP User</label>
+                    <input type="text" id="smtp_user">
+                </div>
+                <div class="form-group">
+                    <label>SMTP Password</label>
+                    <input type="password" id="smtp_password">
+                </div>
+                <div class="form-group">
+                    <label>From Address</label>
+                    <input type="email" id="smtp_from" required>
+                </div>
+                <div class="form-group">
+                    <label>Use TLS</label>
+                    <select id="smtp_tls">
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Configuration</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Endpoint Modal -->
+    <div class="modal" id="endpoint-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="endpoint-modal-title">Add Endpoint</h3>
+                <button class="modal-close" onclick="closeEndpointModal()">&times;</button>
+            </div>
+            <form id="endpoint-form" onsubmit="saveEndpoint(event)">
+                <input type="hidden" id="endpoint-id">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" id="endpoint-name" required>
+                </div>
+                <div class="form-group">
+                    <label>Check Type</label>
+                    <select id="endpoint-check_type" required onchange="toggleEndpointFields()">
+                        <option value="http">HTTP</option>
+                        <option value="tcp">TCP</option>
+                        <option value="ping">Ping</option>
+                    </select>
+                </div>
+                <div class="form-group" id="url-field">
+                    <label>URL</label>
+                    <input type="url" id="endpoint-url">
+                </div>
+                <div class="form-group" id="host-field" style="display:none;">
+                    <label>Host</label>
+                    <input type="text" id="endpoint-host">
+                </div>
+                <div class="form-group" id="port-field" style="display:none;">
+                    <label>Port</label>
+                    <input type="number" id="endpoint-port">
+                </div>
+                <div class="form-group" id="expected-status-field">
+                    <label>Expected Status Code</label>
+                    <input type="number" id="endpoint-expected_status" value="200">
+                </div>
+                <div class="form-group">
+                    <label>Timeout (seconds)</label>
+                    <input type="number" id="endpoint-timeout" value="5" min="1" max="30">
+                </div>
+                <div class="form-group">
+                    <label>Check Interval (seconds)</label>
+                    <input type="number" id="endpoint-check_interval" value="60" min="30">
+                </div>
+                <div class="form-group">
+                    <label>Enabled</label>
+                    <select id="endpoint-is_enabled">
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeEndpointModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Incident Modal -->
+    <div class="modal" id="incident-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="incident-modal-title">Create Incident</h3>
+                <button class="modal-close" onclick="closeIncidentModal()">&times;</button>
+            </div>
+            <form id="incident-form" onsubmit="saveIncident(event)">
+                <input type="hidden" id="incident-id">
+                <div class="form-group">
+                    <label>Endpoint</label>
+                    <select id="incident-endpoint_id" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="incident-title" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="incident-description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Severity</label>
+                    <select id="incident-severity" required>
+                        <option value="critical">Critical</option>
+                        <option value="major">Major</option>
+                        <option value="minor">Minor</option>
+                        <option value="cosmetic">Cosmetic</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="incident-status" required>
+                        <option value="investigating">Investigating</option>
+                        <option value="identified">Identified</option>
+                        <option value="monitoring">Monitoring</option>
+                        <option value="resolved">Resolved</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeIncidentModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Maintenance Modal -->
+    <div class="modal" id="maintenance-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="maintenance-modal-title">Add Maintenance</h3>
+                <button class="modal-close" onclick="closeMaintenanceModal()">&times;</button>
+            </div>
+            <form id="maintenance-form" onsubmit="saveMaintenance(event)">
+                <input type="hidden" id="maintenance-id">
+                <div class="form-group">
+                    <label>Endpoint (leave empty for all)</label>
+                    <select id="maintenance-endpoint_id">
+                        <option value="">All Endpoints</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="maintenance-title" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="maintenance-description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Start Time</label>
+                    <input type="datetime-local" id="maintenance-scheduled_start" required>
+                </div>
+                <div class="form-group">
+                    <label>End Time</label>
+                    <input type="datetime-local" id="maintenance-scheduled_end" required>
+                </div>
+                <div class="form-group">
+                    <label>Active</label>
+                    <select id="maintenance-is_active">
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeMaintenanceModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
