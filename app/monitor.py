@@ -23,6 +23,13 @@ _failure_counts: dict[int, int] = {}
 _scheduler = None
 
 
+def _parse_dt(value):
+    """Parse a datetime from DB string or datetime object."""
+    if isinstance(value, datetime):
+        return value
+    return datetime.fromisoformat(value) if value else datetime.utcnow()
+
+
 # --- Check implementations ---
 def check_http(url: str, timeout: int, expected_status: int) -> CheckResult:
     """Perform an HTTP check."""
@@ -150,6 +157,13 @@ async def _run_endpoint_check(endpoint_id: int):
                 incident_id = cursor.lastrowid
                 conn.commit()
                 await _queue_alert(conn, endpoint_id, incident_id, "down", ep["name"])
+            else:
+                # Escalate existing open incident
+                conn.execute(
+                    "UPDATE incidents SET severity = ?, description = ? WHERE id = ?",
+                    (severity, result.error_message, open_incident["id"])
+                )
+                conn.commit()
 
             logger.warning(
                 f"Endpoint {endpoint_id} ({ep['name']}) check failed: {result.error_message}"
@@ -213,7 +227,7 @@ async def _queue_alert(conn, endpoint_id: int, incident_id: int, event: str, end
             severity=incident["severity"],
             description=incident["description"],
             status=incident["status"],
-            started_at=incident["started_at"],
+            started_at=_parse_dt(incident["started_at"]),
             recipient=recipient,
         )
         conn.execute(
@@ -242,8 +256,8 @@ async def _queue_recovery_alert(conn, incident_id: int, endpoint_name: str):
             endpoint_name=endpoint_name,
             incident_id=incident_id,
             incident_title=incident["title"],
-            started_at=incident["started_at"],
-            resolved_at=incident["resolved_at"] or datetime.utcnow(),
+            started_at=_parse_dt(incident["started_at"]),
+            resolved_at=_parse_dt(incident["resolved_at"]) if incident["resolved_at"] else datetime.utcnow(),
             recipient=recipient,
         )
         conn.execute(
