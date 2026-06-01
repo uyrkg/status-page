@@ -119,7 +119,5 @@ def resolve_incident(incident_id: int):
 
 
 def _row_to_response(row) -> IncidentResponse:
-    # endpoint_name may be present from the JOIN but is not part of IncidentResponse
-    row = dict(row)
-    row.pop("endpoint_name", None)
-    return IncidentResponse(**row)
+    # endpoint_name is denormalized from JOIN with endpoints table — keep it
+    return IncidentResponse(**dict(row))

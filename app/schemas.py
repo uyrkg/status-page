@@ -70,6 +70,7 @@ class IncidentResponse(BaseModel):
     started_at: datetime
     resolved_at: Optional[datetime]
     created_at: datetime
+    endpoint_name: Optional[str] = None  # denormalized from JOIN with endpoints table
 
 
 # --- Maintenance schemas ---
