@@ -233,10 +233,11 @@ function renderIncidents() {
         tbody.innerHTML = '<tr><td colspan="6" class="no-data">No incidents</td></tr>';
         return;
     }
+    const endpointMap = Object.fromEntries(endpoints.map(e => [e.id, e.name]));
     tbody.innerHTML = incidents.map(i => `
         <tr>
             <td>${escapeHtml(i.title)}</td>
-            <td>${i.endpoint_name || '-'}</td>
+            <td>${escapeHtml(endpointMap[i.endpoint_id] || '-')}</td>
             <td><span class="status-badge ${SEVERITY_CLASS_MAP[i.severity] || 'status-operational'}">${i.severity}</span></td>
             <td><span class="status-badge ${INCIDENT_STATUS_CLASS_MAP[i.status] || 'status-operational'}">${i.status}</span></td>
             <td>${formatDate(i.started_at)}</td>

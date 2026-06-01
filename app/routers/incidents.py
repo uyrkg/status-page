@@ -11,11 +11,20 @@ def list_incidents(include_resolved: bool = Query(True)):
     conn = get_db_connection()
     try:
         if include_resolved:
-            rows = conn.execute("SELECT * FROM incidents ORDER BY started_at DESC").fetchall()
+            rows = conn.execute("""
+                SELECT i.*, e.name as endpoint_name
+                FROM incidents i
+                LEFT JOIN endpoints e ON i.endpoint_id = e.id
+                ORDER BY i.started_at DESC
+            """).fetchall()
         else:
-            rows = conn.execute(
-                "SELECT * FROM incidents WHERE resolved_at IS NULL ORDER BY started_at DESC"
-            ).fetchall()
+            rows = conn.execute("""
+                SELECT i.*, e.name as endpoint_name
+                FROM incidents i
+                LEFT JOIN endpoints e ON i.endpoint_id = e.id
+                WHERE i.resolved_at IS NULL
+                ORDER BY i.started_at DESC
+            """).fetchall()
         return [_row_to_response(r) for r in rows]
     finally:
         conn.close()
@@ -110,14 +119,7 @@ def resolve_incident(incident_id: int):
 
 
 def _row_to_response(row) -> IncidentResponse:
-    return IncidentResponse(
-        id=row["id"],
-        endpoint_id=row["endpoint_id"],
-        title=row["title"],
-        description=row["description"],
-        status=row["status"],
-        severity=row["severity"],
-        started_at=row["started_at"],
-        resolved_at=row["resolved_at"],
-        created_at=row["created_at"],
-    )
+    # endpoint_name may be present from the JOIN but is not part of IncidentResponse
+    row = dict(row)
+    row.pop("endpoint_name", None)
+    return IncidentResponse(**row)
