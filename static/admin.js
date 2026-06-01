@@ -73,7 +73,7 @@ function renderEndpoints() {
             <td>${e.check_type.toUpperCase()}</td>
             <td>${escapeHtml(e.url || e.host + (e.port ? ':' + e.port : ''))}</td>
             <td>${e.check_interval}s</td>
-            <td>${getStatusBadge(e.status)}</td>
+            <td>${getStatusBadge(e.current_status)}</td>
             <td class="actions">
                 <button class="btn btn-secondary" onclick="editEndpoint(${e.id})">Edit</button>
                 <button class="btn btn-danger" onclick="deleteEndpoint(${e.id})">Delete</button>
