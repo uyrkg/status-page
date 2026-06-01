@@ -92,7 +92,7 @@ function renderEndpoints() {
         <tr>
             <td>${escapeHtml(e.name)}</td>
             <td>${e.check_type.toUpperCase()}</td>
-            <td>${escapeHtml(e.url || e.host + (e.port ? ':' + e.port : ''))}</td>
+            <td>${escapeHtml(e.host || e.url || '')}</td>
             <td>${e.check_interval}s</td>
             <td>${getStatusBadge(e.current_status)}</td>
             <td class="actions">
