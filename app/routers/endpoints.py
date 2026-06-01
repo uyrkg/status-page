@@ -120,8 +120,7 @@ def update_endpoint(endpoint_id: int, data: EndpointUpdate):
 
         updates = {}
         for field, value in data.model_dump(exclude_unset=True).items():
-            if value is not None:
-                updates[field] = value
+            updates[field] = value
         updates["updated_at"] = datetime.utcnow().isoformat()
 
         if updates:
