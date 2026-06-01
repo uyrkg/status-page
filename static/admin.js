@@ -167,9 +167,9 @@ async function saveEndpoint(e) {
     const data = {
         name: document.getElementById('endpoint-name').value,
         check_type: checkType,
-        url: document.getElementById('endpoint-url').value || undefined,
-        host: document.getElementById('endpoint-host').value || undefined,
-        port: parseInt(document.getElementById('endpoint-port').value) || undefined,
+        url: document.getElementById('endpoint-url').value || null,
+        host: document.getElementById('endpoint-host').value || null,
+        port: parseInt(document.getElementById('endpoint-port').value) || null,
         expected_status: parseInt(document.getElementById('endpoint-expected_status').value) || 200,
         timeout: parseInt(document.getElementById('endpoint-timeout').value) || 5,
         check_interval: parseInt(document.getElementById('endpoint-check_interval').value) || 60,
