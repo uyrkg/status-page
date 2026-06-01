@@ -126,9 +126,19 @@ async function editEndpoint(id) {
 async function saveEndpoint(e) {
     e.preventDefault();
     const id = document.getElementById('endpoint-id').value;
+    const checkType = document.getElementById('endpoint-check_type').value;
+
+    // Clear fields not applicable to this check type to prevent stale values from overwriting
+    if (checkType === 'http') {
+        document.getElementById('endpoint-host').value = '';
+        document.getElementById('endpoint-port').value = '';
+    } else {
+        document.getElementById('endpoint-url').value = '';
+    }
+
     const data = {
         name: document.getElementById('endpoint-name').value,
-        check_type: document.getElementById('endpoint-check_type').value,
+        check_type: checkType,
         url: document.getElementById('endpoint-url').value || undefined,
         host: document.getElementById('endpoint-host').value || undefined,
         port: parseInt(document.getElementById('endpoint-port').value) || undefined,
