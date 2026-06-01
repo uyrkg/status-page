@@ -90,6 +90,15 @@ function toggleEndpointFields() {
     document.getElementById('expected-status-field').style.display = type === 'http' ? 'block' : 'none';
 }
 
+function sanitizeEndpointFieldsByType(checkType) {
+    if (checkType === 'http') {
+        document.getElementById('endpoint-host').value = '';
+        document.getElementById('endpoint-port').value = '';
+    } else {
+        document.getElementById('endpoint-url').value = '';
+    }
+}
+
 function openEndpointModal(id = null) {
     document.getElementById('endpoint-form').reset();
     document.getElementById('endpoint-id').value = '';
@@ -127,14 +136,7 @@ async function saveEndpoint(e) {
     e.preventDefault();
     const id = document.getElementById('endpoint-id').value;
     const checkType = document.getElementById('endpoint-check_type').value;
-
-    // Clear fields not applicable to this check type to prevent stale values from overwriting
-    if (checkType === 'http') {
-        document.getElementById('endpoint-host').value = '';
-        document.getElementById('endpoint-port').value = '';
-    } else {
-        document.getElementById('endpoint-url').value = '';
-    }
+    sanitizeEndpointFieldsByType(checkType);
 
     const data = {
         name: document.getElementById('endpoint-name').value,
