@@ -49,6 +49,27 @@ function showMessage(msg, isError = false) {
     setTimeout(() => el.style.display = 'none', 3000);
 }
 
+// ============ STATUS CONFIG ============
+const STATUS_CLASS_MAP = {
+    'operational': 'status-operational',
+    'degraded': 'status-degraded',
+    'down': 'status-outage',
+    'maintenance': 'status-maintenance'
+};
+
+const STATUS_BANNER_CLASS_MAP = {
+    'all_operational': 'operational',
+    'degraded': 'degraded',
+    'partial_outage': 'degraded',
+    'major_outage': 'down',
+    'maintenance': 'maintenance'
+};
+
+function getStatusBadge(status) {
+    const cssClass = STATUS_CLASS_MAP[status] || 'status-operational';
+    return `<span class="status-badge ${cssClass}">${status || 'unknown'}</span>`;
+}
+
 // ============ ENDPOINTS ============
 let endpoints = [];
 
@@ -187,6 +208,20 @@ async function loadIncidents() {
     }
 }
 
+const SEVERITY_CLASS_MAP = {
+    'critical': 'status-outage',
+    'major': 'status-degraded',
+    'minor': 'status-degraded',
+    'cosmetic': 'status-maintenance'
+};
+
+const INCIDENT_STATUS_CLASS_MAP = {
+    'investigating': 'status-outage',
+    'identified': 'status-degraded',
+    'monitoring': 'status-degraded',
+    'resolved': 'status-operational'
+};
+
 function renderIncidents() {
     const tbody = document.getElementById('incidents-tbody');
     if (incidents.length === 0) {
@@ -197,8 +232,8 @@ function renderIncidents() {
         <tr>
             <td>${escapeHtml(i.title)}</td>
             <td>${i.endpoint_name || '-'}</td>
-            <td><span class="status-badge status-${i.severity === 'critical' ? 'outage' : i.severity === 'major' ? 'degraded' : 'maintenance'}">${i.severity}</span></td>
-            <td><span class="status-badge status-${i.resolved_at ? 'operational' : 'outage'}">${i.status}</span></td>
+            <td><span class="status-badge ${SEVERITY_CLASS_MAP[i.severity] || 'status-operational'}">${i.severity}</span></td>
+            <td><span class="status-badge ${INCIDENT_STATUS_CLASS_MAP[i.status] || 'status-operational'}">${i.status}</span></td>
             <td>${formatDate(i.started_at)}</td>
             <td class="actions">
                 ${i.resolved_at ? '' : '<button class="btn btn-primary" onclick="resolveIncident(' + i.id + ')">Resolve</button>'}
@@ -446,14 +481,7 @@ async function doFullSync() {
 async function syncStatus() {
     try {
         const data = await API.get('/status');
-        const statusMap = {
-            'all_operational': 'operational',
-            'degraded': 'degraded',
-            'partial_outage': 'degraded',
-            'major_outage': 'down',
-            'maintenance': 'maintenance'
-        };
-        const cssClass = statusMap[data.status] || 'operational';
+        const cssClass = STATUS_BANNER_CLASS_MAP[data.status] || 'operational';
         const banner = document.getElementById('status-banner');
         banner.className = 'status-banner status-banner-' + cssClass;
         let html = `<span style="font-weight:bold;text-transform:uppercase">${data.status}</span>`;
@@ -480,16 +508,6 @@ function escapeHtml(str) {
 function formatDate(dateStr) {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleString();
-}
-
-function getStatusBadge(status) {
-    const statusMap = {
-        'operational': 'status-operational',
-        'degraded': 'status-degraded',
-        'down': 'status-outage',
-        'maintenance': 'status-maintenance'
-    };
-    return `<span class="status-badge ${statusMap[status] || 'status-operational'}">${status || 'unknown'}</span>`;
 }
 
 // Load data on page load
