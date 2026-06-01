@@ -149,7 +149,7 @@ function closeEndpointModal() {
     document.getElementById('endpoint-modal').classList.remove('active');
 }
 
-async function editEndpoint(id) {
+function editEndpoint(id) {
     openEndpointModal(id);
 }
 
@@ -272,7 +272,7 @@ function closeIncidentModal() {
     document.getElementById('incident-modal').classList.remove('active');
 }
 
-async function editIncident(id) {
+function editIncident(id) {
     openIncidentModal(id);
 }
 
@@ -384,7 +384,7 @@ function closeMaintenanceModal() {
     document.getElementById('maintenance-modal').classList.remove('active');
 }
 
-async function editMaintenance(id) {
+function editMaintenance(id) {
     openMaintenanceModal(id);
 }
 
@@ -510,5 +510,5 @@ function formatDate(dateStr) {
     return new Date(dateStr).toLocaleString();
 }
 
-// Load data on page load
-loadEndpoints().then(() => loadIncidents()).then(() => loadMaintenance()).then(() => syncStatus());
+// Load all data in parallel on page load
+Promise.all([loadEndpoints(), loadIncidents(), loadMaintenance()]).then(() => syncStatus());
