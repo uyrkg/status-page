@@ -112,11 +112,15 @@ function toggleEndpointFields() {
 }
 
 function sanitizeEndpointFieldsByType(checkType) {
+    // Clear fields not applicable to the selected check type
     if (checkType === 'http') {
         document.getElementById('endpoint-host').value = '';
         document.getElementById('endpoint-port').value = '';
-    } else {
+    } else if (checkType === 'tcp') {
         document.getElementById('endpoint-url').value = '';
+    } else if (checkType === 'ping') {
+        document.getElementById('endpoint-url').value = '';
+        document.getElementById('endpoint-port').value = '';
     }
 }
 
