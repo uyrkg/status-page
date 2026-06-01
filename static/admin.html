@@ -58,13 +58,25 @@
 
         .success { background: #238636; color: #fff; padding: 10px; border-radius: 6px; margin-bottom: 15px; display: none; }
         .error { background: #da3633; color: #fff; padding: 10px; border-radius: 6px; margin-bottom: 15px; display: none; }
+
+        .status-banner-operational { background: #238636; color: #fff; }
+        .status-banner-degraded { background: #d29922; color: #000; }
+        .status-banner-down { background: #da3633; color: #fff; }
+        .status-banner-maintenance { background: #8957e5; color: #fff; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>StatusPage Admin</h1>
 
+        <div id="status-banner" class="status-banner" style="display:none; margin-bottom: 20px; padding: 12px 16px; border-radius: 8px; font-size: 14px; align-items: center; gap: 20px;"></div>
+
         <div id="message"></div>
+
+        <div style="margin-bottom: 20px;">
+            <button class="btn btn-secondary" onclick="doFullSync()">⟳ Sync All</button>
+            <span style="margin-left: 12px; font-size: 13px; color: #8b949e;">Last synced: <span id="last-sync-time">—</span></span>
+        </div>
 
         <div class="tabs">
             <button class="tab active" data-tab="endpoints">Endpoints</button>
@@ -75,7 +87,8 @@
 
         <!-- Endpoints Panel -->
         <div class="panel active" id="endpoints-panel">
-            <div style="margin-bottom: 15px;">
+            <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+                <button class="btn btn-secondary" onclick="syncSection(this, loadEndpoints)">⟳ Sync</button>
                 <button class="btn btn-primary" onclick="openEndpointModal()">+ Add Endpoint</button>
             </div>
             <table>
@@ -95,7 +108,8 @@
 
         <!-- Incidents Panel -->
         <div class="panel" id="incidents-panel">
-            <div style="margin-bottom: 15px;">
+            <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+                <button class="btn btn-secondary" onclick="syncSection(this, loadIncidents)">⟳ Sync</button>
                 <button class="btn btn-primary" onclick="openIncidentModal()">+ Create Incident</button>
             </div>
             <table>
@@ -115,7 +129,8 @@
 
         <!-- Maintenance Panel -->
         <div class="panel" id="maintenance-panel">
-            <div style="margin-bottom: 15px;">
+            <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+                <button class="btn btn-secondary" onclick="syncSection(this, loadMaintenance)">⟳ Sync</button>
                 <button class="btn btn-primary" onclick="openMaintenanceModal()">+ Add Maintenance</button>
             </div>
             <table>
