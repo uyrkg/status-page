@@ -109,6 +109,7 @@ function toggleEndpointFields() {
     document.getElementById('host-field').style.display = type === 'tcp' || type === 'ping' ? 'block' : 'none';
     document.getElementById('port-field').style.display = type === 'tcp' ? 'block' : 'none';
     document.getElementById('expected-status-field').style.display = type === 'http' ? 'block' : 'none';
+    sanitizeEndpointFieldsByType(type);
 }
 
 function sanitizeEndpointFieldsByType(checkType) {
