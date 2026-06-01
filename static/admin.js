@@ -414,6 +414,50 @@ async function saveSMTPConfig(e) {
 }
 
 // ============ UTILS ============
+function syncSection(btn, loadFn) {
+    btn.textContent = '…';
+    loadFn().finally(() => { btn.textContent = '⟳ Sync'; });
+}
+
+async function doFullSync() {
+    const btn = document.querySelector('button[onclick="doFullSync()"]');
+    btn.textContent = '…';
+    try {
+        await Promise.all([loadEndpoints(), loadIncidents(), loadMaintenance()]);
+        await syncStatus();
+        document.getElementById('last-sync-time').textContent = new Date().toLocaleTimeString();
+    } finally {
+        btn.textContent = '⟳ Sync All';
+    }
+}
+
+async function syncStatus() {
+    try {
+        const data = await API.get('/status');
+        const statusMap = {
+            'all_operational': 'operational',
+            'degraded': 'degraded',
+            'partial_outage': 'degraded',
+            'major_outage': 'down',
+            'maintenance': 'maintenance'
+        };
+        const cssClass = statusMap[data.status] || 'operational';
+        const banner = document.getElementById('status-banner');
+        banner.className = 'status-banner status-banner-' + cssClass;
+        let html = `<span style="font-weight:bold;text-transform:uppercase">${data.status}</span>`;
+        if (data.endpoints_affected && data.endpoints_affected > 0) {
+            html += ` <span>· ${data.endpoints_affected} endpoint${data.endpoints_affected !== 1 ? 's' : ''} affected</span>`;
+        }
+        if (data.active_incidents && data.active_incidents > 0) {
+            html += ` <span>· ${data.active_incidents} active incident${data.active_incidents !== 1 ? 's' : ''}</span>`;
+        }
+        banner.innerHTML = html;
+        banner.style.display = 'flex';
+    } catch (e) {
+        console.error('Failed to load status:', e);
+    }
+}
+
 function escapeHtml(str) {
     if (!str) return '';
     const div = document.createElement('div');
@@ -437,4 +481,4 @@ function getStatusBadge(status) {
 }
 
 // Load data on page load
-loadEndpoints().then(() => loadIncidents()).then(() => loadMaintenance());
+loadEndpoints().then(() => loadIncidents()).then(() => loadMaintenance()).then(() => syncStatus());
