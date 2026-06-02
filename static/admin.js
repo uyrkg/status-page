@@ -242,9 +242,9 @@ function renderIncidents() {
             <td><span class="status-badge ${INCIDENT_STATUS_CLASS_MAP[i.status] || 'status-operational'}">${i.status}</span></td>
             <td>${formatDate(i.started_at)}</td>
             <td class="actions">
-                ${i.resolved_at ? '' : '<button class="btn btn-primary" onclick="resolveIncident(' + i.id + ')">Resolve</button>'}
-                <button class="btn btn-secondary" onclick="editIncident(' + i.id + ')">Edit</button>
-                <button class="btn btn-danger" onclick="deleteIncident(' + i.id + ')">Delete</button>
+                ${i.resolved_at ? '' : `<button class="btn btn-primary" onclick="resolveIncident(${JSON.stringify(i.id)})">Resolve</button>`}
+                <button class="btn btn-secondary" onclick="editIncident(${JSON.stringify(i.id)})">Edit</button>
+                <button class="btn btn-danger" onclick="deleteIncident(${JSON.stringify(i.id)})">Delete</button>
             </td>
         </tr>
     `).join('');
