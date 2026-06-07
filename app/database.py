@@ -98,5 +98,6 @@ def init_db():
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
     """)
+
     conn.commit()
     conn.close()

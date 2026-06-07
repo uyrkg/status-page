@@ -2,7 +2,7 @@ import pytest
 import sqlite3
 import os
 import tempfile
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch, AsyncMock, MagicMock
 
 # ---------------------------------------------------------------------------
@@ -180,7 +180,7 @@ class TestRunEndpointCheck:
         conn.execute(
             """INSERT INTO incidents (endpoint_id, title, status, severity, started_at)
                VALUES (?, ?, 'investigating', 'major', ?)""",
-            (sample_endpoint, "Prior incident", datetime.utcnow().isoformat())
+            (sample_endpoint, "Prior incident", datetime.now(timezone.utc).isoformat())
         )
         conn.commit()
         incident_id = conn.execute("SELECT id FROM incidents ORDER BY id DESC LIMIT 1").fetchone()["id"]
@@ -196,7 +196,7 @@ class TestRunEndpointCheck:
 
     async def test_skipped_during_active_maintenance(self, conn, sample_endpoint):
         from app.monitor import _run_endpoint_check
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         conn.execute(
             """INSERT INTO maintenance_windows
                (endpoint_id, title, scheduled_start, scheduled_end, is_active)
@@ -253,8 +253,8 @@ class TestRunEndpointCheck:
 class TestPruneHistory:
     def test_prunes_old_records_keeps_recent(self, conn, sample_endpoint):
         from app.history import prune_old_history
-        old = (datetime.utcnow() - timedelta(days=31)).isoformat()
-        recent = (datetime.utcnow() - timedelta(days=5)).isoformat()
+        old = (datetime.now(timezone.utc) - timedelta(days=31)).isoformat()
+        recent = (datetime.now(timezone.utc) - timedelta(days=5)).isoformat()
 
         conn.execute(
             """INSERT INTO check_history (endpoint_id, check_type, success, response_time_ms, checked_at)
@@ -359,7 +359,7 @@ class TestEndpointsRouter:
         conn.execute(
             """INSERT INTO check_history (endpoint_id, check_type, success, response_time_ms, checked_at)
                VALUES (?, ?, 1, 40, ?)""",
-            (sample_endpoint, "http", datetime.utcnow().isoformat())
+            (sample_endpoint, "http", datetime.now(timezone.utc).isoformat())
         )
         conn.commit()
 
@@ -450,9 +450,9 @@ class TestMaintenanceRouter:
     def test_create_maintenance(self, sample_endpoint):
         from fastapi.testclient import TestClient
         from app.main import app
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
         client = TestClient(app)
-        start = datetime.utcnow()
+        start = datetime.now(timezone.utc)
         end = start + timedelta(hours=2)
         resp = client.post("/api/maintenance", json={
             "endpoint_id": sample_endpoint,
@@ -466,9 +466,9 @@ class TestMaintenanceRouter:
     def test_create_global_maintenance_no_endpoint(self):
         from fastapi.testclient import TestClient
         from app.main import app
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
         client = TestClient(app)
-        start = datetime.utcnow()
+        start = datetime.now(timezone.utc)
         end = start + timedelta(hours=1)
         resp = client.post("/api/maintenance", json={
             "title": "Global maintenance",
@@ -623,12 +623,12 @@ class TestSchemas:
 
     def test_maintenance_create(self):
         from app.schemas import MaintenanceCreate
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
         m = MaintenanceCreate(
             endpoint_id=5,
             title="Win",
-            scheduled_start=datetime.utcnow(),
-            scheduled_end=datetime.utcnow() + timedelta(hours=1),
+            scheduled_start=datetime.now(timezone.utc),
+            scheduled_end=datetime.now(timezone.utc) + timedelta(hours=1),
         )
         assert m.title == "Win"
         assert m.is_active is True

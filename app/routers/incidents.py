@@ -1,9 +1,26 @@
 from fastapi import APIRouter, HTTPException, Query
-from datetime import datetime
+from datetime import datetime, timezone
 from app.database import get_db_connection
 from app.schemas import IncidentCreate, IncidentUpdate, IncidentResponse
 
 router = APIRouter(prefix="/api/incidents", tags=["incidents"])
+
+
+def _row_to_response(row) -> IncidentResponse:
+    """Convert a database row to IncidentResponse."""
+    endpoint_name = row["endpoint_name"] if "endpoint_name" in row.keys() else None
+    return IncidentResponse(
+        id=row["id"],
+        endpoint_id=row["endpoint_id"],
+        title=row["title"],
+        description=row["description"],
+        status=row["status"],
+        severity=row["severity"],
+        started_at=row["started_at"],
+        resolved_at=row["resolved_at"],
+        created_at=row["created_at"],
+        endpoint_name=endpoint_name,
+    )
 
 
 @router.get("", response_model=list[IncidentResponse])
@@ -39,7 +56,7 @@ def create_incident(data: IncidentCreate):
                (endpoint_id, title, description, status, severity, started_at)
                VALUES (?, ?, ?, ?, ?, ?)""",
             (data.endpoint_id, data.title, data.description, data.status, data.severity,
-             datetime.utcnow().isoformat())
+             datetime.now(timezone.utc).isoformat())
         )
         conn.commit()
         row = conn.execute("SELECT * FROM incidents WHERE id = ?", (cursor.lastrowid,)).fetchone()
@@ -109,15 +126,10 @@ def resolve_incident(incident_id: int):
             raise HTTPException(404, "Incident not found")
         conn.execute(
             "UPDATE incidents SET status = 'resolved', resolved_at = ? WHERE id = ?",
-            (datetime.utcnow().isoformat(), incident_id)
+            (datetime.now(timezone.utc).isoformat(), incident_id)
         )
         conn.commit()
         row = conn.execute("SELECT * FROM incidents WHERE id = ?", (incident_id,)).fetchone()
         return _row_to_response(row)
     finally:
         conn.close()
-
-
-def _row_to_response(row) -> IncidentResponse:
-    # endpoint_name is denormalized from JOIN with endpoints table — keep it
-    return IncidentResponse(**dict(row))

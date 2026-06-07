@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Query
 from app.database import get_db_connection
 from app.schemas import StatusResponse, StatsResponse, UptimeStat
@@ -28,7 +28,7 @@ def _compute_aggregate_status() -> tuple[str, int, int]:
             status = "all_operational"
 
         # Check for active maintenance affecting endpoints
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         maint_rows = conn.execute(
             """SELECT COUNT(DISTINCT endpoint_id) as cnt FROM maintenance_windows
                WHERE is_active = 1
@@ -93,7 +93,7 @@ def get_stats():
 
 def _compute_uptime(conn, endpoint_id: int, days: int) -> float:
     """Compute uptime % for an endpoint over the given number of days."""
-    since = datetime.utcnow() - timedelta(days=days)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
     total_row = conn.execute(
         "SELECT COUNT(*) as cnt FROM check_history WHERE endpoint_id = ? AND checked_at >= ?",
         (endpoint_id, since.isoformat())

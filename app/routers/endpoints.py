@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.database import get_db_connection
 from app.schemas import (
     EndpointCreate, EndpointUpdate, EndpointResponse,
@@ -32,7 +32,7 @@ def _get_current_status(endpoint_id: int) -> str:
     conn = get_db_connection()
     try:
         # Check if in maintenance
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         row = conn.execute(
             """SELECT id FROM maintenance_windows
                WHERE (endpoint_id = ? OR endpoint_id IS NULL)
@@ -121,7 +121,7 @@ def update_endpoint(endpoint_id: int, data: EndpointUpdate):
         updates = {}
         for field, value in data.model_dump(exclude_unset=True).items():
             updates[field] = value
-        updates["updated_at"] = datetime.utcnow().isoformat()
+        updates["updated_at"] = datetime.now(timezone.utc).isoformat()
 
         if updates:
             set_clause = ", ".join(f"{k} = ?" for k in updates.keys())

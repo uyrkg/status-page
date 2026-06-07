@@ -94,6 +94,7 @@ class MaintenanceUpdate(BaseModel):
 class MaintenanceResponse(BaseModel):
     id: int
     endpoint_id: Optional[int]
+    endpoint_name: Optional[str] = None
     title: str
     description: Optional[str]
     scheduled_start: datetime

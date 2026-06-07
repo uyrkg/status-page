@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 from typing import Optional
 
@@ -27,7 +27,7 @@ def _parse_dt(value):
     """Parse a datetime from DB string or datetime object."""
     if isinstance(value, datetime):
         return value
-    return datetime.fromisoformat(value) if value else datetime.utcnow()
+    return datetime.fromisoformat(value) if value else datetime.now(timezone.utc)
 
 
 # --- Check implementations ---
@@ -93,7 +93,7 @@ async def _run_endpoint_check(endpoint_id: int):
         if not ep:
             return
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # Check if in maintenance
         maint_row = conn.execute(
@@ -203,7 +203,7 @@ async def _queue_alert(conn, endpoint_id: int, incident_id: int, event: str, end
     if not cfg["smtp_host"]:
         return
 
-    cooldown = datetime.utcnow() - timedelta(minutes=config.alert_cooldown_minutes)
+    cooldown = datetime.now(timezone.utc) - timedelta(minutes=config.alert_cooldown_minutes)
     recent = conn.execute(
         """SELECT id FROM email_alerts
            WHERE endpoint_id = ? AND sent_at >= ? AND success = 1""",
@@ -257,7 +257,7 @@ async def _queue_recovery_alert(conn, incident_id: int, endpoint_name: str):
             incident_id=incident_id,
             incident_title=incident["title"],
             started_at=_parse_dt(incident["started_at"]),
-            resolved_at=_parse_dt(incident["resolved_at"]) if incident["resolved_at"] else datetime.utcnow(),
+            resolved_at=_parse_dt(incident["resolved_at"]) if incident["resolved_at"] else datetime.now(timezone.utc),
             recipient=recipient,
         )
         conn.execute(

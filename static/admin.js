@@ -349,13 +349,13 @@ function renderMaintenance() {
     tbody.innerHTML = maintenanceWindows.map(m => `
         <tr>
             <td>${escapeHtml(m.title)}</td>
-            <td>${m.endpoint_name || 'All'}</td>
+            <td>${escapeHtml(m.endpoint_name || 'All')}</td>
             <td>${formatDate(m.scheduled_start)}</td>
             <td>${formatDate(m.scheduled_end)}</td>
             <td><span class="status-badge status-${m.is_active ? 'maintenance' : 'operational'}">${m.is_active ? 'Active' : 'Inactive'}</span></td>
             <td class="actions">
-                <button class="btn btn-secondary" onclick="editMaintenance(' + m.id + ')">Edit</button>
-                <button class="btn btn-danger" onclick="deleteMaintenance(' + m.id + ')">Delete</button>
+                <button class="btn btn-secondary" onclick="editMaintenance(${m.id})">Edit</button>
+                <button class="btn btn-danger" onclick="deleteMaintenance(${m.id})">Delete</button>
             </td>
         </tr>
     `).join('');

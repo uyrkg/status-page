@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.config import config
 
@@ -12,7 +12,7 @@ def prune_old_history():
 
     conn = get_db_connection()
     try:
-        cutoff = datetime.utcnow() - timedelta(days=config.history_retention_days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=config.history_retention_days)
         cursor = conn.execute(
             "DELETE FROM check_history WHERE checked_at < ?",
             (cutoff.isoformat(),)

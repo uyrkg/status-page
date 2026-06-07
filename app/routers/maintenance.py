@@ -6,12 +6,34 @@ from app.schemas import MaintenanceCreate, MaintenanceUpdate, MaintenanceRespons
 router = APIRouter(prefix="/api/maintenance", tags=["maintenance"])
 
 
+def _row_to_response(row) -> MaintenanceResponse:
+    """Convert a database row to MaintenanceResponse."""
+    endpoint_name = None
+    try:
+        endpoint_name = row["endpoint_name"]
+    except KeyError:
+        endpoint_name = None
+    return MaintenanceResponse(
+        id=row["id"],
+        endpoint_id=row["endpoint_id"],
+        title=row["title"],
+        description=row["description"],
+        scheduled_start=row["scheduled_start"],
+        scheduled_end=row["scheduled_end"],
+        is_active=bool(row["is_active"]),
+        created_at=row["created_at"],
+        endpoint_name=endpoint_name,
+    )
+
+
 @router.get("", response_model=list[MaintenanceResponse])
 def list_maintenance():
     conn = get_db_connection()
     try:
         rows = conn.execute(
-            "SELECT * FROM maintenance_windows ORDER BY scheduled_start DESC"
+            "SELECT mw.*, e.name as endpoint_name FROM maintenance_windows mw "
+            "LEFT JOIN endpoints e ON mw.endpoint_id = e.id "
+            "ORDER BY mw.scheduled_start DESC"
         ).fetchall()
         return [_row_to_response(r) for r in rows]
     finally:
@@ -31,7 +53,9 @@ def create_maintenance(data: MaintenanceCreate):
         )
         conn.commit()
         row = conn.execute(
-            "SELECT * FROM maintenance_windows WHERE id = ?", (cursor.lastrowid,)
+            "SELECT mw.*, e.name as endpoint_name FROM maintenance_windows mw "
+            "LEFT JOIN endpoints e ON mw.endpoint_id = e.id "
+            "WHERE mw.id = ?", (cursor.lastrowid,)
         ).fetchone()
         return _row_to_response(row)
     finally:
@@ -43,7 +67,9 @@ def get_maintenance(maintenance_id: int):
     conn = get_db_connection()
     try:
         row = conn.execute(
-            "SELECT * FROM maintenance_windows WHERE id = ?", (maintenance_id,)
+            "SELECT mw.*, e.name as endpoint_name FROM maintenance_windows mw "
+            "LEFT JOIN endpoints e ON mw.endpoint_id = e.id "
+            "WHERE mw.id = ?", (maintenance_id,)
         ).fetchone()
         if not row:
             raise HTTPException(404, "Maintenance window not found")
@@ -79,7 +105,9 @@ def update_maintenance(maintenance_id: int, data: MaintenanceUpdate):
             conn.commit()
 
         row = conn.execute(
-            "SELECT * FROM maintenance_windows WHERE id = ?", (maintenance_id,)
+            "SELECT mw.*, e.name as endpoint_name FROM maintenance_windows mw "
+            "LEFT JOIN endpoints e ON mw.endpoint_id = e.id "
+            "WHERE mw.id = ?", (maintenance_id,)
         ).fetchone()
         return _row_to_response(row)
     finally:
@@ -101,16 +129,3 @@ def delete_maintenance(maintenance_id: int):
         conn.commit()
     finally:
         conn.close()
-
-
-def _row_to_response(row) -> MaintenanceResponse:
-    return MaintenanceResponse(
-        id=row["id"],
-        endpoint_id=row["endpoint_id"],
-        title=row["title"],
-        description=row["description"],
-        scheduled_start=row["scheduled_start"],
-        scheduled_end=row["scheduled_end"],
-        is_active=bool(row["is_active"]),
-        created_at=row["created_at"],
-    )

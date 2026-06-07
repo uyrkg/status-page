@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from app.database import get_db_connection
 from app.schemas import SMTPConfigUpdate, SMTPConfigResponse
@@ -43,9 +43,9 @@ def update_smtp_config(data: SMTPConfigUpdate):
                smtp_host = ?, smtp_port = ?, smtp_user = ?, smtp_password = ?,
                smtp_from = ?, smtp_tls = ?, updated_at = ?""",
             (data.smtp_host, data.smtp_port, data.smtp_user, data.smtp_password, data.smtp_from,
-             data.smtp_tls, datetime.utcnow().isoformat(),
+             data.smtp_tls, datetime.now(timezone.utc).isoformat(),
              data.smtp_host, data.smtp_port, data.smtp_user, data.smtp_password, data.smtp_from,
-             data.smtp_tls, datetime.utcnow().isoformat())
+             data.smtp_tls, datetime.now(timezone.utc).isoformat())
         )
         conn.commit()
         return SMTPConfigResponse(
