@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StatusPage — Admin Login</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117; color: #c9d1d9; min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .login-box {
+            background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+            padding: 40px; width: 380px; max-width: 90%;
+        }
+        h1 { color: #58a6ff; margin-bottom: 8px; font-size: 22px; text-align: center; }
+        .subtitle { color: #8b949e; font-size: 13px; text-align: center; margin-bottom: 28px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 6px; color: #8b949e; font-size: 13px; }
+        input[type="password"] {
+            width: 100%; padding: 10px 12px;
+            background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+            color: #c9d1d9; font-size: 14px;
+        }
+        input:focus { outline: none; border-color: #58a6ff; }
+        .btn {
+            width: 100%; padding: 10px; border: none; border-radius: 6px;
+            cursor: pointer; font-size: 14px; font-weight: 600;
+            background: #238636; color: #fff; transition: background 0.2s;
+        }
+        .btn:hover { background: #2ea043; }
+        .error {
+            background: #da3633; color: #fff; padding: 10px; border-radius: 6px;
+            margin-bottom: 16px; display: none; font-size: 13px; text-align: center;
+        }
+        .hint { color: #8b949e; font-size: 12px; text-align: center; margin-top: 16px; }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h1>🔐 Admin Login</h1>
+        <p class="subtitle">Enter the admin password to manage endpoints</p>
+        <div class="error" id="error-msg">Invalid password</div>
+        <form id="login-form" onsubmit="doLogin(event)">
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" autofocus required>
+            </div>
+            <button type="submit" class="btn">Sign In</button>
+        </form>
+        <p class="hint">Set <code>ADMIN_PASSWORD</code> in your .env file</p>
+    </div>
+    <script>
+        async function doLogin(e) {
+            e.preventDefault();
+            const pw = document.getElementById('password').value;
+            const err = document.getElementById('error-msg');
+            try {
+                const res = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: pw })
+                });
+                if (res.ok) {
+                    window.location.href = '/admin';
+                } else {
+                    err.style.display = 'block';
+                    err.textContent = 'Invalid password';
+                }
+            } catch {
+                err.style.display = 'block';
+                err.textContent = 'Connection error';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -92,7 +92,6 @@ def init_db():
             smtp_host TEXT,
             smtp_port INTEGER DEFAULT 587,
             smtp_user TEXT,
-            smtp_password TEXT,
             smtp_from TEXT,
             smtp_tls BOOLEAN DEFAULT 1,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP

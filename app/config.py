@@ -16,6 +16,7 @@ class AppConfig:
     smtp_tls: bool = os.getenv("SMTP_TLS", "true").lower() in ("true", "1", "yes")
     app_url: str = os.getenv("APP_URL", "http://localhost:8000")
     alert_cooldown_minutes: int = int(os.getenv("ALERT_COOLDOWN_MINUTES", "5"))
+    admin_password: str = os.getenv("ADMIN_PASSWORD", "")
 
     db_dir: str = field(init=False)
 

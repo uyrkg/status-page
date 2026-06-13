@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime
 from app.database import get_db_connection
 from app.schemas import MaintenanceCreate, MaintenanceUpdate, MaintenanceResponse
+from app.auth import require_admin
 
-router = APIRouter(prefix="/api/maintenance", tags=["maintenance"])
+router = APIRouter(prefix="/api/maintenance", tags=["maintenance"], dependencies=[Depends(require_admin)])
 
 
 def _row_to_response(row) -> MaintenanceResponse:

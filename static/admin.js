@@ -9,15 +9,25 @@ document.querySelectorAll('.tab').forEach(tab => {
     });
 });
 
+// Global 401 handler — redirect to login if session expired
+async function apiFetch(path, options = {}) {
+    const res = await fetch(path, options);
+    if (res.status === 401) {
+        window.location.href = '/admin/login';
+        throw new Error('Unauthorized');
+    }
+    return res;
+}
+
 // API helpers
 const API = {
     async get(path) {
-        const res = await fetch('/api' + path);
+        const res = await apiFetch('/api' + path);
         if (!res.ok) throw new Error(await res.text());
         return res.json();
     },
     async post(path, data) {
-        const res = await fetch('/api' + path, {
+        const res = await apiFetch('/api' + path, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -26,7 +36,7 @@ const API = {
         return res.json();
     },
     async put(path, data) {
-        const res = await fetch('/api' + path, {
+        const res = await apiFetch('/api' + path, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -35,7 +45,7 @@ const API = {
         return res.json();
     },
     async delete(path) {
-        const res = await fetch('/api' + path, { method: 'DELETE' });
+        const res = await apiFetch('/api' + path, { method: 'DELETE' });
         if (!res.ok) throw new Error(await res.text());
         return true;
     }

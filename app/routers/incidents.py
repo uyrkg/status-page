@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from datetime import datetime, timezone
 from app.database import get_db_connection
 from app.schemas import IncidentCreate, IncidentUpdate, IncidentResponse
+from app.auth import require_admin
 
-router = APIRouter(prefix="/api/incidents", tags=["incidents"])
+router = APIRouter(prefix="/api/incidents", tags=["incidents"], dependencies=[Depends(require_admin)])
 
 
 def _row_to_response(row) -> IncidentResponse:

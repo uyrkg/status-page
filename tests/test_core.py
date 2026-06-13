@@ -16,12 +16,15 @@ TEST_DB = tempfile.mktemp(suffix=".db")
 def setup_test_db(monkeypatch):
     """Override DATABASE_URL to use a temp db for every test."""
     monkeypatch.setenv("DATABASE_URL", TEST_DB)
+    monkeypatch.setenv("ADMIN_PASSWORD", "test-admin-password")
     # Force reload of modules that cached config at import time
     import importlib
     import app.config
     importlib.reload(app.config)
     import app.database
     importlib.reload(app.database)
+    import app.auth
+    importlib.reload(app.auth)
     # Init fresh schema
     from app.database import init_db
     init_db()
@@ -283,10 +286,10 @@ class TestPruneHistory:
 # ---------------------------------------------------------------------------
 
 class TestEndpointsRouter:
-    def test_create_endpoint(self):
+    def test_create_endpoint(self, auth_client):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
+        client = auth_client
         resp = client.post("/api/endpoints", json={
             "name": "New Endpoint",
             "url": "https://example.com",
@@ -298,10 +301,10 @@ class TestEndpointsRouter:
         assert data["name"] == "New Endpoint"
         assert data["check_interval"] == 30
 
-    def test_create_endpoint_default_interval(self):
+    def test_create_endpoint_default_interval(self, auth_client):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
+        client = auth_client
         resp = client.post("/api/endpoints", json={
             "name": "Minimal Endpoint",
             "url": "https://example.com",
@@ -309,49 +312,49 @@ class TestEndpointsRouter:
         assert resp.status_code == 201
         assert resp.json()["check_interval"] == 60  # default
 
-    def test_list_endpoints(self, sample_endpoint):
+    def test_list_endpoints(self, auth_client, sample_endpoint):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
+        client = auth_client
         resp = client.get("/api/endpoints")
         assert resp.status_code == 200
         ids = [e["id"] for e in resp.json()]
         assert sample_endpoint in ids
 
-    def test_get_endpoint_404(self):
+    def test_get_endpoint_404(self, auth_client):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
+        client = auth_client
         resp = client.get("/api/endpoints/99999")
         assert resp.status_code == 404
 
-    def test_update_check_interval(self, sample_endpoint):
+    def test_update_check_interval(self, auth_client, sample_endpoint):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
+        client = auth_client
         resp = client.put(f"/api/endpoints/{sample_endpoint}",
                           json={"check_interval": 120})
         assert resp.status_code == 200
         assert resp.json()["check_interval"] == 120
 
-    def test_update_check_type(self, sample_endpoint):
+    def test_update_check_type(self, auth_client, sample_endpoint):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
+        client = auth_client
         resp = client.put(f"/api/endpoints/{sample_endpoint}",
                           json={"check_type": "ping", "url": None})
         assert resp.status_code == 200
         assert resp.json()["check_type"] == "ping"
 
-    def test_delete_endpoint(self, sample_endpoint):
+    def test_delete_endpoint(self, auth_client, sample_endpoint):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
+        client = auth_client
         resp = client.delete(f"/api/endpoints/{sample_endpoint}")
         assert resp.status_code == 204
         assert client.get(f"/api/endpoints/{sample_endpoint}").status_code == 404
 
-    def test_get_endpoint_history(self, conn, sample_endpoint):
+    def test_get_endpoint_history(self, auth_client, conn, sample_endpoint):
         from fastapi.testclient import TestClient
         from app.main import app
         from datetime import datetime
@@ -363,7 +366,7 @@ class TestEndpointsRouter:
         )
         conn.commit()
 
-        client = TestClient(app)
+        client = auth_client
         resp = client.get(f"/api/endpoints/{sample_endpoint}/history")
         assert resp.status_code == 200
         assert len(resp.json()) == 1
@@ -374,10 +377,10 @@ class TestEndpointsRouter:
 # ---------------------------------------------------------------------------
 
 class TestIncidentsRouter:
-    def test_create_incident(self, sample_endpoint):
+    def test_create_incident(self, auth_client, sample_endpoint):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
+        client = auth_client
         resp = client.post("/api/incidents", json={
             "endpoint_id": sample_endpoint,
             "title": "Test Incident",
@@ -386,10 +389,10 @@ class TestIncidentsRouter:
         assert resp.status_code == 201
         assert resp.json()["severity"] == "major"
 
-    def test_list_incidents(self, sample_endpoint):
+    def test_list_incidents(self, auth_client, sample_endpoint):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
+        client = auth_client
         client.post("/api/incidents", json={
             "endpoint_id": sample_endpoint,
             "title": "List Test"
@@ -398,24 +401,24 @@ class TestIncidentsRouter:
         assert resp.status_code == 200
         assert len(resp.json()) >= 1
 
-    def test_list_incidents_exclude_resolved(self, sample_endpoint):
+    def test_list_incidents_exclude_resolved(self, auth_client, sample_endpoint):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
+        client = auth_client
         resp = client.get("/api/incidents?include_resolved=false")
         assert resp.status_code == 200
 
-    def test_get_incident_404(self):
+    def test_get_incident_404(self, auth_client):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
+        client = auth_client
         resp = client.get("/api/incidents/99999")
         assert resp.status_code == 404
 
-    def test_resolve_incident(self, sample_endpoint):
+    def test_resolve_incident(self, auth_client, sample_endpoint):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
+        client = auth_client
         create_resp = client.post("/api/incidents", json={
             "endpoint_id": sample_endpoint,
             "title": "To Resolve"
@@ -425,10 +428,10 @@ class TestIncidentsRouter:
         assert resp.status_code == 200
         assert resp.json()["status"] == "resolved"
 
-    def test_update_incident(self, sample_endpoint):
+    def test_update_incident(self, auth_client, sample_endpoint):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
+        client = auth_client
         create = client.post("/api/incidents", json={
             "endpoint_id": sample_endpoint,
             "title": "Old Title",
@@ -447,11 +450,11 @@ class TestIncidentsRouter:
 # ---------------------------------------------------------------------------
 
 class TestMaintenanceRouter:
-    def test_create_maintenance(self, sample_endpoint):
+    def test_create_maintenance(self, auth_client, sample_endpoint):
         from fastapi.testclient import TestClient
         from app.main import app
         from datetime import datetime, timedelta, timezone
-        client = TestClient(app)
+        client = auth_client
         start = datetime.now(timezone.utc)
         end = start + timedelta(hours=2)
         resp = client.post("/api/maintenance", json={
@@ -463,11 +466,11 @@ class TestMaintenanceRouter:
         assert resp.status_code == 201
         assert resp.json()["title"] == "Planned downtime"
 
-    def test_create_global_maintenance_no_endpoint(self):
+    def test_create_global_maintenance_no_endpoint(self, auth_client):
         from fastapi.testclient import TestClient
         from app.main import app
         from datetime import datetime, timedelta, timezone
-        client = TestClient(app)
+        client = auth_client
         start = datetime.now(timezone.utc)
         end = start + timedelta(hours=1)
         resp = client.post("/api/maintenance", json={
@@ -478,10 +481,10 @@ class TestMaintenanceRouter:
         assert resp.status_code == 201
         assert resp.json()["endpoint_id"] is None
 
-    def test_get_maintenance_404(self):
+    def test_get_maintenance_404(self, auth_client):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
+        client = auth_client
         resp = client.get("/api/maintenance/99999")
         assert resp.status_code == 404
 
@@ -491,19 +494,17 @@ class TestMaintenanceRouter:
 # ---------------------------------------------------------------------------
 
 class TestStatusRouter:
-    def test_status_all_operational_clean(self, sample_endpoint):
+    def test_status_all_operational_clean(self, client, sample_endpoint):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
         resp = client.get("/api/status")
         assert resp.status_code == 200
         assert resp.json()["status"] == "all_operational"
 
-    def test_status_degraded_on_minor_incident(self, sample_endpoint):
+    def test_status_degraded_on_minor_incident(self, auth_client, client, sample_endpoint):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
-        client.post("/api/incidents", json={
+        auth_client.post("/api/incidents", json={
             "endpoint_id": sample_endpoint,
             "title": "Minor degradation",
             "severity": "minor"
@@ -511,11 +512,10 @@ class TestStatusRouter:
         resp = client.get("/api/status")
         assert resp.json()["status"] == "degraded"
 
-    def test_status_partial_outage_on_major(self, sample_endpoint):
+    def test_status_partial_outage_on_major(self, auth_client, client, sample_endpoint):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
-        client.post("/api/incidents", json={
+        auth_client.post("/api/incidents", json={
             "endpoint_id": sample_endpoint,
             "title": "Major outage",
             "severity": "major"
@@ -523,11 +523,10 @@ class TestStatusRouter:
         resp = client.get("/api/status")
         assert resp.json()["status"] == "partial_outage"
 
-    def test_status_major_outage_on_critical(self, sample_endpoint):
+    def test_status_major_outage_on_critical(self, auth_client, client, sample_endpoint):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
-        client.post("/api/incidents", json={
+        auth_client.post("/api/incidents", json={
             "endpoint_id": sample_endpoint,
             "title": "Critical!",
             "severity": "critical"
@@ -535,10 +534,9 @@ class TestStatusRouter:
         resp = client.get("/api/status")
         assert resp.json()["status"] == "major_outage"
 
-    def test_stats_endpoint(self, sample_endpoint):
+    def test_stats_endpoint(self, client, sample_endpoint):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
         resp = client.get("/api/stats")
         assert resp.status_code == 200
         data = resp.json()
@@ -554,20 +552,20 @@ class TestStatusRouter:
 # ---------------------------------------------------------------------------
 
 class TestConfigRouter:
-    def test_get_smtp_default(self):
+    def test_get_smtp_default(self, auth_client):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
+        client = auth_client
         resp = client.get("/api/config/smtp")
         assert resp.status_code == 200
         data = resp.json()
         assert "smtp_host" in data
         assert data["password_set"] is False
 
-    def test_update_smtp_config(self):
+    def test_update_smtp_config(self, auth_client):
         from fastapi.testclient import TestClient
         from app.main import app
-        client = TestClient(app)
+        client = auth_client
         resp = client.put("/api/config/smtp", json={
             "smtp_host": "mail.example.com",
             "smtp_port": 587,
