@@ -1,9 +1,66 @@
-from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Query
+from datetime import datetime, timedelta, timezone
 from app.database import get_db_connection
 from app.schemas import StatusResponse, StatsResponse, UptimeStat
 
 router = APIRouter(tags=["status"])
+
+
+def _get_current_status(conn, endpoint_id: int) -> str:
+    """Get current status for an endpoint."""
+    now = datetime.now(timezone.utc)
+    # Check maintenance
+    row = conn.execute(
+        """SELECT id FROM maintenance_windows
+           WHERE (endpoint_id = ? OR endpoint_id IS NULL)
+           AND is_active = 1
+           AND scheduled_start <= ? AND scheduled_end > ?""",
+        (endpoint_id, now.isoformat(), now.isoformat())
+    ).fetchone()
+    if row:
+        return "maintenance"
+    # Check open incident
+    inc = conn.execute(
+        "SELECT severity FROM incidents WHERE endpoint_id = ? AND resolved_at IS NULL",
+        (endpoint_id,)
+    ).fetchone()
+    if inc:
+        return "down"
+    # Latest check
+    chk = conn.execute(
+        "SELECT success FROM check_history WHERE endpoint_id = ? ORDER BY checked_at DESC LIMIT 1",
+        (endpoint_id,)
+    ).fetchone()
+    if chk:
+        return "up" if chk["success"] else "down"
+    return "unknown"
+
+
+@router.get("/api/endpoints")
+def list_public_endpoints():
+    """Public endpoint listing for the status page — no auth needed."""
+    conn = get_db_connection()
+    try:
+        rows = conn.execute("SELECT * FROM endpoints WHERE is_enabled = 1 ORDER BY name").fetchall()
+        result = []
+        for r in rows:
+            latest = conn.execute(
+                "SELECT response_time_ms, checked_at FROM check_history WHERE endpoint_id = ? ORDER BY checked_at DESC LIMIT 1",
+                (r["id"],)
+            ).fetchone()
+            result.append({
+                "id": r["id"],
+                "name": r["name"],
+                "host": r["host"],
+                "url": r["url"],
+                "current_status": _get_current_status(conn, r["id"]),
+                "response_time_ms": latest["response_time_ms"] if latest else None,
+                "last_check": latest["checked_at"] if latest else None,
+                "is_enabled": True,
+            })
+        return result
+    finally:
+        conn.close()
 
 
 def _compute_aggregate_status() -> tuple[str, int, int]:

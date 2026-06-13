@@ -19,7 +19,7 @@
         .subtitle { color: #8b949e; font-size: 13px; text-align: center; margin-bottom: 28px; }
         .form-group { margin-bottom: 18px; }
         label { display: block; margin-bottom: 6px; color: #8b949e; font-size: 13px; }
-        input[type="password"] {
+        input[type="text"], input[type="password"] {
             width: 100%; padding: 10px 12px;
             background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
             color: #c9d1d9; font-size: 14px;
@@ -41,33 +41,38 @@
 <body>
     <div class="login-box">
         <h1>🔐 Admin Login</h1>
-        <p class="subtitle">Enter the admin password to manage endpoints</p>
-        <div class="error" id="error-msg">Invalid password</div>
+        <p class="subtitle">Sign in to manage endpoints</p>
+        <div class="error" id="error-msg">Invalid username or password</div>
         <form id="login-form" onsubmit="doLogin(event)">
             <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="username" value="admin" autofocus required>
+            </div>
+            <div class="form-group">
                 <label>Password</label>
-                <input type="password" id="password" autofocus required>
+                <input type="password" id="password" required>
             </div>
             <button type="submit" class="btn">Sign In</button>
         </form>
-        <p class="hint">Set <code>ADMIN_PASSWORD</code> in your .env file</p>
+        <p class="hint">Default: <code>admin</code> / <code>ADMIN_PASSWORD</code> from .env</p>
     </div>
     <script>
         async function doLogin(e) {
             e.preventDefault();
+            const user = document.getElementById('username').value;
             const pw = document.getElementById('password').value;
             const err = document.getElementById('error-msg');
             try {
                 const res = await fetch('/api/admin/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: pw })
+                    body: JSON.stringify({ username: user, password: pw })
                 });
                 if (res.ok) {
                     window.location.href = '/admin';
                 } else {
                     err.style.display = 'block';
-                    err.textContent = 'Invalid password';
+                    err.textContent = 'Invalid username or password';
                 }
             } catch {
                 err.style.display = 'block';

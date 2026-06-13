@@ -177,7 +177,7 @@ async def _run_endpoint_check(endpoint_id: int):
             ).fetchone()
             if open_incident:
                 conn.execute(
-                    "UPDATE incidents SET resolved_at = ? WHERE id = ?",
+                    "UPDATE incidents SET status = 'resolved', resolved_at = ? WHERE id = ?",
                     (now.isoformat(), open_incident["id"])
                 )
                 conn.commit()

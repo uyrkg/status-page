@@ -1,8 +1,9 @@
 """
 Authentication module for the admin panel.
 
-Uses itsdangerous for signed session tokens (stateless, no DB needed).
-Admin password is read from the ADMIN_PASSWORD environment variable.
+Supports multiple users with username + bcrypt-hashed password login.
+Session tokens are signed with itsdangerous (stateless, no DB needed).
+The initial admin user is created from ADMIN_PASSWORD env var on first startup.
 """
 
 import os
@@ -10,6 +11,9 @@ import logging
 from datetime import datetime, timedelta, timezone
 from fastapi import Request, HTTPException, status
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+import bcrypt
+
+from app.database import get_db_connection
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +30,37 @@ def _get_serializer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(_get_secret(), salt="admin-session")
 
 
-def _get_admin_password() -> str:
-    """Return the configured admin password."""
-    return os.getenv("ADMIN_PASSWORD", "")
+def hash_password(password: str) -> str:
+    """Hash a plaintext password with bcrypt."""
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def verify_password_hash(plaintext: str, password_hash: str) -> bool:
+    """Verify a plaintext password against a bcrypt hash."""
+    return bcrypt.checkpw(plaintext.encode("utf-8"), password_hash.encode("utf-8"))
+
+
+def ensure_admin_user():
+    """Create the initial admin user from ADMIN_PASSWORD env var if no admin exists."""
+    admin_pw = os.getenv("ADMIN_PASSWORD", "")
+    if not admin_pw:
+        return
+
+    conn = get_db_connection()
+    try:
+        existing = conn.execute(
+            "SELECT id FROM users WHERE username = 'admin'"
+        ).fetchone()
+        if not existing:
+            pw_hash = hash_password(admin_pw)
+            conn.execute(
+                "INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, 1)",
+                ("admin", pw_hash),
+            )
+            conn.commit()
+            logger.info("Created initial admin user")
+    finally:
+        conn.close()
 
 
 def create_session_token() -> str:
@@ -48,13 +80,20 @@ def verify_session_token(token: str) -> bool:
         return False
 
 
-def verify_password(password: str) -> bool:
-    """Check if the provided password matches ADMIN_PASSWORD."""
-    expected = _get_admin_password()
-    if not expected:
-        logger.warning("ADMIN_PASSWORD is not set — admin login disabled")
+def authenticate_user(username: str, password: str) -> bool:
+    """Check username/password against the users table. Returns True on success."""
+    if not username or not password:
         return False
-    return password == expected
+    conn = get_db_connection()
+    try:
+        row = conn.execute(
+            "SELECT password_hash FROM users WHERE username = ?", (username,)
+        ).fetchone()
+        if not row:
+            return False
+        return verify_password_hash(password, row["password_hash"])
+    finally:
+        conn.close()
 
 
 async def require_admin(request: Request):
@@ -64,14 +103,12 @@ async def require_admin(request: Request):
     """
     token = request.cookies.get("admin_session")
     if not token or not verify_session_token(token):
-        # If it's an API call, return JSON 401
         accept = request.headers.get("accept", "")
         if "/json" in accept or request.url.path.startswith("/api/"):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Unauthorized — please log in at /admin/login",
             )
-        # For page loads, redirect to login
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Unauthorized",

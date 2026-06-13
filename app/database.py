@@ -87,6 +87,14 @@ def init_db():
             success BOOLEAN
         );
 
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            is_admin BOOLEAN DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS smtp_config (
             id INTEGER PRIMARY KEY CHECK (id = 1),
             smtp_host TEXT,

@@ -44,6 +44,9 @@ def setup_test_db(monkeypatch):
     # Init fresh schema
     from app.database import init_db
     init_db()
+    # Create the admin user for testing
+    from app.auth import ensure_admin_user
+    ensure_admin_user()
     yield
     try:
         os.unlink(TEST_DB)
@@ -104,29 +107,41 @@ class TestAuth:
 
     def test_login_success_returns_cookie(self, client):
         """Correct password returns 200 and sets admin_session cookie."""
-        resp = client.post("/api/admin/login", json={"password": "test-admin-password"})
+        resp = client.post("/api/admin/login", json={"username": "admin", "password": "test-admin-password"})
         assert resp.status_code == 200
         assert resp.json()["success"] is True
         assert "admin_session" in resp.cookies
 
     def test_login_wrong_password_returns_401(self, client):
         """Wrong password returns 401."""
-        resp = client.post("/api/admin/login", json={"password": "wrong-password"})
+        resp = client.post("/api/admin/login", json={"username": "admin", "password": "wrong-password"})
         assert resp.status_code == 401
-        assert "Invalid password" in resp.text
+        assert "Invalid" in resp.text
 
     def test_login_empty_password_returns_401(self, client):
         """Empty password returns 401."""
-        resp = client.post("/api/admin/login", json={"password": ""})
+        resp = client.post("/api/admin/login", json={"username": "admin", "password": ""})
         assert resp.status_code == 401
 
     def test_login_no_admin_password_set_returns_401(self, client, monkeypatch):
-        """When ADMIN_PASSWORD is not set, login is disabled."""
+        """Without admin user in DB, login fails."""
         monkeypatch.delenv("ADMIN_PASSWORD", raising=False)
         import importlib
         import app.auth
         importlib.reload(app.auth)
-        resp = client.post("/api/admin/login", json={"password": "anything"})
+        # Delete the admin user from the test DB
+        from app.database import get_db_connection
+        conn = get_db_connection()
+        conn.execute("DELETE FROM users")
+        conn.commit()
+        conn.close()
+        # Login should now fail since no users exist
+        resp = client.post("/api/admin/login", json={"username": "admin", "password": "any"})
+        assert resp.status_code == 401
+
+    def test_login_wrong_username_returns_401(self, client):
+        """Non-existent username returns 401."""
+        resp = client.post("/api/admin/login", json={"username": "nobody", "password": "anything"})
         assert resp.status_code == 401
 
     def test_logout_clears_cookie(self, auth_client):
@@ -160,18 +175,18 @@ class TestAuth:
         resp = client.get("/admin")
         assert resp.status_code == 401
 
-        resp = client.get("/api/endpoints")
+        resp = client.get("/api/incidents")
         assert resp.status_code == 401
 
     def test_tampered_token_rejected(self, client):
         """A tampered session token should be rejected."""
         client.cookies.set("admin_session", "this-is-not-a-valid-token")
-        resp = client.get("/api/endpoints")
+        resp = client.get("/api/incidents")
         assert resp.status_code == 401
 
     def test_empty_token_rejected(self, client):
         """No cookie at all should be rejected."""
-        resp = client.get("/api/endpoints")
+        resp = client.get("/api/incidents")
         assert resp.status_code == 401
 
     def test_login_page_served(self, client):
@@ -199,7 +214,6 @@ class TestNoBackdoor:
         from datetime import datetime, timezone
 
         routes = [
-            ("GET", "/api/endpoints"),
             ("POST", "/api/endpoints", {"name": "X", "url": "https://x.com"}),
             ("GET", f"/api/endpoints/{sample_endpoint}"),
             ("PUT", f"/api/endpoints/{sample_endpoint}", {"name": "Y"}),

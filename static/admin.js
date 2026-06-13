@@ -6,6 +6,7 @@ document.querySelectorAll('.tab').forEach(tab => {
         tab.classList.add('active');
         document.getElementById(tab.dataset.tab + '-panel').classList.add('active');
         if (tab.dataset.tab === 'config') loadSMTPConfig();
+        if (tab.dataset.tab === 'users') loadUsers();
     });
 });
 
@@ -471,6 +472,84 @@ async function saveSMTPConfig(e) {
     try {
         await API.put('/config/smtp', data);
         showMessage('SMTP configuration saved');
+    } catch (err) {
+        showMessage('Error: ' + err.message, true);
+    }
+}
+
+// ============ LOGOUT ============
+async function doLogout() {
+    try {
+        await fetch('/api/admin/logout', { method: 'POST' });
+        window.location.href = '/admin/login';
+    } catch {
+        window.location.href = '/admin/login';
+    }
+}
+
+// ============ USERS ============
+let users = [];
+
+async function loadUsers() {
+    try {
+        users = await API.get('/admin/users');
+        renderUsers();
+    } catch (e) {
+        showMessage('Failed to load users: ' + e.message, true);
+    }
+}
+
+function renderUsers() {
+    const tbody = document.getElementById('users-tbody');
+    if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="no-data">No users</td></tr>';
+        return;
+    }
+    tbody.innerHTML = users.map(u => `
+        <tr>
+            <td>${u.id}</td>
+            <td>${escapeHtml(u.username)}</td>
+            <td><span class="status-badge ${u.is_admin ? 'status-maintenance' : 'status-operational'}">${u.is_admin ? 'Admin' : 'User'}</span></td>
+            <td>${formatDate(u.created_at)}</td>
+            <td class="actions">
+                ${u.id === 1 ? '' : `<button class="btn btn-danger" onclick="deleteUser(${u.id})">Delete</button>`}
+            </td>
+        </tr>
+    `).join('');
+}
+
+function openUserModal() {
+    document.getElementById('user-form').reset();
+    document.getElementById('user-modal').classList.add('active');
+}
+
+function closeUserModal() {
+    document.getElementById('user-modal').classList.remove('active');
+}
+
+async function saveUser(e) {
+    e.preventDefault();
+    const data = {
+        username: document.getElementById('user-username').value,
+        password: document.getElementById('user-password').value,
+        is_admin: document.getElementById('user-is_admin').value === 'true'
+    };
+    try {
+        await API.post('/admin/users', data);
+        showMessage('User created');
+        closeUserModal();
+        loadUsers();
+    } catch (err) {
+        showMessage('Error: ' + err.message, true);
+    }
+}
+
+async function deleteUser(id) {
+    if (!confirm('Delete this user?')) return;
+    try {
+        await API.delete('/admin/users/' + id);
+        showMessage('User deleted');
+        loadUsers();
     } catch (err) {
         showMessage('Error: ' + err.message, true);
     }
